@@ -120,7 +120,7 @@ print(modFit)</code></pre>
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
 ## The final value used for the model was mtry = 28.</code></pre>
-<p>The output shows us the cross-validation accuracy (in 10-fold cross-validation) for 3 possible values of <code>mtry</code>, which is the sole tuning parameter for the random forest method via caret. Since it chose to use <code>mtry = 28</code> for the final model, the estimate for the final model’s <strong>out-of-sample accuracy is 99.94%</strong>.</p>
+<p>The output shows us the cross-validation accuracy (in 10-fold cross-validation) for 3 possible values of <code>mtry</code>, which is the sole tuning parameter for the random forest method via caret. Since it chose to use <code>mtry = 28</code> for the final model, the estimate for the final model’s <strong>out-of-sample accuracy is 99.94%</strong>. I believe the actual out-of-sample accuracy would be substantially lower, particularly if there were different participants, but 99.94% is the estimate from cross-validation.</p>
 <p>Finally, I predict the validation cases using the final model:</p>
 <pre class="r"><code>predictedOutcomes &lt;- predict(modFit$finalModel, newdata = validation)
 print(predictedOutcomes)</code></pre>
