@@ -1,0 +1,94 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Phil Enock"
+date: "Sunday, January 25, 2015"
+output: html_document
+---
+
+## Introduction
+
+In this informal report, I will explain how I carried out the course project. I will show all relevant source code and output along the way. Many thanks to my peer graders for evaluating my work!
+
+Our source data are two CSV's provided by Professor Leek:
+
+ - [pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv), data for model training with 19622 rows and 160 columns
+ - [pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv), data for the 20 prediction cases that I submit for grading, with 20 rows and 160 columns. I will refer to these as *validation cases* rather than "testing", since they are hold-out data not to be used for model creation (as opposed to testing data during splits for cross-validation)
+
+Originally, the data are from the [Weight Lifting Exercises dataset](http://groupware.les.inf.puc-rio.br/har) (Velloso et al., 2013), which consists of timestamped readings from 4 accelerometers on 6 participants who repeatedly did barbell lifts. They were instructed (and coached) to do the lifts in 5 different ways: 1 correct way, and 4 incorrect ways. The way they were instructed for a given lift is recorded in the `classe` column, with "A" representing the correct way, and B-E representing the 4 incorrect ways.
+
+My goal was to train a model based on the training data that could predict `classe` for any new data (including the 20 validation cases).
+
+## Pre-processing
+
+First, I load the data:
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(caret)
+library(randomForest)
+setwd("C:/Dropbox/DSL/ML/Practical Machine Learning/PML Course Project, weightlifting")
+```
+
+```{r}
+training <- read.csv('pml-training.csv')
+validation <- read.csv('pml-testing.csv')
+```
+
+Next, I find and discard variables with no info in the *validation* set, as they won't be useful for prediction:
+
+```{r}
+nzvResult <- caret::nearZeroVar(validation, saveMetrics=T)
+uselessCols <- colnames(validation)[nzvResult$zeroVar==T]
+validation <- validation[, !(colnames(validation) %in% uselessCols)] 
+training <- training[, !(colnames(training) %in% uselessCols)] 
+```
+
+I also discard factors other than classe, because random forest (which I will use for modeling) cannot use factors:
+```{r}
+validation <- validation[ , sapply(validation, is.factor) == F | names(validation) == 'classe']
+training <- training[ , sapply(training, is.factor) == F | names(training) == 'classe']
+```
+
+Lastly, I discard X, the first column in the datasets, which just has row numbers that are not part of the data:
+```{r}
+validation$X <- NULL
+training$X <- NULL
+```
+
+## Choosing parameters for caret to build the model
+I chose to include **all remaining predictors**, in order to let the algorithm determine whether they were useful predictors. (If this had yielded poor results, such as severe overfitting, I would have inspected the data in other ways to determine which predictors to include versus omit.)
+
+I chose **random forest** as the method because it is typically one of the most accurate algorithms. Also, it handles non-Gaussian data well, and I found that the data were very much non-Gaussian.
+
+To use **cross-validation** for out-of-sample accuracy estimation, I set the trControl argument to train(). This defaults to 10-fold (k-fold with k = 10) cross-validation.
+
+## Modeling and results
+Here, I build the model:
+
+```{r, message = F, warning = F}
+modFit <- train(classe ~ .,
+                method = 'rf',
+                trControl = trainControl(method = 'cv'),
+                data = training)
+print(modFit)
+```
+
+The output shows us the cross-validation accuracy (in 10-fold cross-validation) for 3 possible values of `mtry`, which is the sole tuning parameter for the random forest method via caret. Since it chose to use `mtry = 28` for the final model, the estimate for the final model's **out-of-sample accuracy is 99.94%**. I believe the actual out-of-sample accuracy would be substantially lower, particularly if there were different participants, but 99.94% is the estimate from cross-validation.
+
+Finally, I predict the validation cases using the final model:
+
+```{r, message = F, warning = F}
+predictedOutcomes <- predict(modFit$finalModel, newdata = validation)
+print(predictedOutcomes)
+```
+
+**The above are my predictions for the 20 validation cases.** I have uploaded these into the "Course Project: Submission" interface and found 100% accuracy for these 20 cases.
+
+## Conclusions
+Apparently, the 4 accelerometers provide strong data for predicting whether the lifting was done correctly or incorrectly, and if incorrect, what class of mistake was being made, by the 6 participants.
+
+I would like to thank my peer graders for their attention.
+
+## References
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. [Qualitative Activity Recognition of Weight Lifting Exercises](http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201). Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+Read more: http://groupware.les.inf.puc-rio.br/har#wle_paper_section#ixzz3PquWNdU6
